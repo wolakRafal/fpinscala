@@ -14,7 +14,6 @@ project.vim
 *.iml
 
 ## Directory-based project format:
-.idea/
 # if you remove the above rule, at least ignore the following:
 
 # User-specific stuff:
@@ -57,3 +56,13 @@ crashlytics.properties
 crashlytics-build.properties
 
 
+### SBT template
+# Simple Build Tool
+# http://www.scala-sbt.org/release/docs/Getting-Started/Directories.html#configuring-version-control
+
+target/
+lib_managed/
+src_managed/
+project/boot/
+.history
+.cache
