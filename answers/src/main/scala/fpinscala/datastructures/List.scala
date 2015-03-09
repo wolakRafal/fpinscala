@@ -90,7 +90,12 @@ object List { // `List` companion object. Contains functions for creating and wo
     }
 
   /*
-  Note that we're copying the entire list up until the last element. Besides being inefficient, the natural recursive solution will use a stack frame for each element of the list, which can lead to stack overflows for large lists (can you see why?). With lists, it's common to use a temporary, mutable buffer internal to the function (with lazy lists or streams, which we discuss in chapter 5, we don't normally do this). So long as the buffer is allocated internal to the function, the mutation is not observable and RT is preserved.
+  Note that we're copying the entire list up until the last element. Besides being inefficient,
+  the natural recursive solution will use a stack frame for each element of the list, which can lead to stack overflows
+  for large lists (can you see why?).
+  With lists, it's common to use a temporary, mutable buffer internal
+  to the function (with lazy lists or streams, which we discuss in chapter 5, we don't normally do this).
+  So long as the buffer is allocated internal to the function, the mutation is not observable and RT is preserved.
   
   Another common convention is to accumulate the output list in reverse order, then reverse it at the end, which doesn't require even local mutation. We'll write a reverse function later in this chapter.
   */
@@ -113,11 +118,15 @@ object List { // `List` companion object. Contains functions for creating and wo
   }
 
   /* 
-  No, this is not possible! The reason is because _before_ we ever call our function, `f`, we evaluate its argument, which in the case of `foldRight` means traversing the list all the way to the end. We need _non-strict_ evaluation to support early termination---we discuss this in chapter 5.
+  No, this is not possible! The reason is because _before_ we ever call our function, `f`, we evaluate its argument,
+  which in the case of `foldRight` means traversing the list all the way to the end.
+  We need _non-strict_ evaluation to support early termination---we discuss this in chapter 5.
   */
 
   /* 
-  We get back the original list! Why is that? As we mentioned earlier, one way of thinking about what `foldRight` "does" is it replaces the `Nil` constructor of the list with the `z` argument, and it replaces the `Cons` constructor with the given function, `f`. If we just supply `Nil` for `z` and `Cons` for `f`, then we get back the input list. 
+  We get back the original list! Why is that? As we mentioned earlier, one way of thinking about what `foldRight`
+  "does" is it replaces the `Nil` constructor of the list with the `z` argument, and it replaces the `Cons`
+  constructor with the given function, `f`. If we just supply `Nil` for `z` and `Cons` for `f`, then we get back the input list.
   
   foldRight(Cons(1, Cons(2, Cons(3, Nil))), Nil:List[Int])(Cons(_,_))
   Cons(1, foldRight(Cons(2, Cons(3, Nil)), Nil:List[Int])(Cons(_,_)))
@@ -129,7 +138,7 @@ object List { // `List` companion object. Contains functions for creating and wo
   def length[A](l: List[A]): Int = 
     foldRight(l, 0)((_,acc) => acc + 1)
 
-  /* 
+  /*
   It's common practice to annotate functions you expect to be tail-recursive with the `tailrec` annotation. If the function is not tail-recursive, it will yield a compile error, rather than silently compiling the code and resulting in greater stack space usage at runtime. 
   */
   @annotation.tailrec
