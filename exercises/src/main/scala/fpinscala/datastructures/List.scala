@@ -89,7 +89,7 @@ object List {
     go(l)
   }
 
-  def length[A](l: List[A]): Int = {
+  def length_1[A](l: List[A]): Int = {
     def count(ls: List[A], acc: Int): Int = {
       ls match {
         case Nil => acc

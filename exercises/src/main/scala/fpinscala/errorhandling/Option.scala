@@ -53,12 +53,12 @@ object Option {
     x <- a
     y <- b
   } yield f(x,y)
-
-  def sequence[A](xs: List[Option[A]]): Option[List[A]] = Some(for {
-    x <- xs
-    opa <- x
-    a <- opa
-  } yield a)
+//
+//  def sequence[A](xs: List[Option[A]]): Option[List[A]] = Some(for {
+//    x <- xs
+//    opa <- x
+//    a <- opa
+//  } yield a)
 
   def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = a match {
     case Nil => Some(Nil)
