@@ -21,6 +21,8 @@ object Par {
                                        // implementation of executorService (with fixed thread pool size)
   })
 
+  def delay[A](fa : => Par[A]): Par[A] = es => fa(es)
+
   // EXC 1. map2 as primitive
   def map2[A,B,C](a: Par[A], b: Par[B])(f: (A,B) => C): Par[C] = es => {
     val af = a(es)
@@ -148,6 +150,55 @@ object Par {
 
   def map5[A, B, C, D, E, F](pa: Par[A], pb: Par[B], pc: Par[C], pd: Par[D], pe: Par[E])(f: (A, B, C, D, E) => F) =
     map2(pa, pb)((a, b) => map2(pc, pd)((c, d) => map2(pe, unit(()))((e, _) => f(a, b, c, d, e))))
+
+//
+//  EXERCISE 14: Try writing a function to choose between two forking
+//  computations based on the result of an initial computation. Can this be
+//  implemented in terms of existing combinators or is a new primitive required?
+  def choice[A](a: Par[Boolean])(ifTrue: Par[A], ifFalse: Par[A]): Par[A] =
+    flatMap(a)(a => if(a) ifTrue else ifFalse)
+
+  def flatMap[A, B](pa: Par[A])(f: A => Par[B]): Par[B] = es => {
+    val a = run(es)(pa).get
+    run(es)(f(a))
+  }
+
+//  Let's say that choiceN runs a, then uses that to select a parallel computation
+//    from choices. This is a bit more general than choice.
+//  EXERCISE 15: Implement choiceN and then choice in terms of choiceN
+  def choiceN[A](a: Par[Int])(choices: List[Par[A]]): Par[A] = flatMap(a)( i => choices(i))
+
+  def choice_[A](a: Par[Boolean])(ifTrue: Par[A], ifFalse: Par[A]): Par[A] = {
+    choiceN(map(a)(if (_) 0 else 1))(List(ifTrue, ifFalse))
+  }
+//
+//  EXERCISE 16: Try implementing the following combinator.
+// Here, instead of a list of computations, we have a Map  of them
+  def choiceMap[A, B](a: Par[A])(choices: Map[A, Par[B]]): Par[B] = flatMap(a)(key => choices(key))
+
+//  EXERCISE 17: Implement this new primitive chooser, then use it to
+//  implement choice and choiceN.
+  def chooser[A, B](a: Par[A])(choices: A => Par[B]): Par[B] = flatMap(a)(a => choices(a))
+    // chooser, THIS is the same as flatMap or bind ( >>= in haskell)
+
+  def join[A](a: Par[Par[A]]): Par[A] = flatMap(a)(a => a)
+
+
+  ///// ADITIONALL MATERIAL //////////////
+
+  //    Can you implement a function with the same signature as map2, but using bind and unit?
+  //    How is its meaning different than that of map2?
+  def map2_reimplement[A,B,C](pa: Par[A], pb: Par[B])(f: (A,B) => C): Par[C] =
+    flatMap(pa)(a =>
+      map(pb)(b =>
+          f(a,b) ))
+
+
+  // can be use for comprehension if Par will be a class with flatMap, but it is type alias
+//  def map2_reimplement_for[A, B, C](pa: Par[A], pb: Par[B])(f: (A, B) => C): Par[C] = for {
+//    a <- pa
+//    b <- pb
+//  } yield f(a, b)
 
 }
 
