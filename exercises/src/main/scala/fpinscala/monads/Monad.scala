@@ -34,24 +34,36 @@ trait Monad[M[_]] extends Functor[M] {
   def map2[A,B,C](ma: M[A], mb: M[B])(f: (A, B) => C): M[C] =
     flatMap(ma)(a => map(mb)(b => f(a, b)))
 
-  def sequence[A](lma: List[M[A]]): M[List[A]] = ???
+  def sequence[A](lma: List[M[A]]): M[List[A]] = {
+    lma.foldRight(unit(List[A]()))((ma: M[A], mb: M[List[A]]) => map2(ma,mb)(_ :: _))
+  }
 
-  def traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] = ???
+  def traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] = {
+    la.foldRight(unit(List[B]()))((a, mlb) => map2(f(a), mlb)(_ :: _))
+    // OR in terms of sequence -> sequence(la.map(f))
+  }
 
-  def replicateM[A](n: Int, ma: M[A]): M[List[A]] = ???
+  def replicateM[A](n: Int, ma: M[A]): M[List[A]] = sequence(List.fill(n)(ma))
 
-  def compose[A,B,C](f: A => M[B], g: B => M[C]): A => M[C] = ???
+  def compose[A, B, C](f: A => M[B], g: B => M[C]): A => M[C] =
+    a => flatMap(f(a))(g)
+
+  def factor[A,B](ma: M[A], mb: M[B]): M[(A,B)] = map2(ma,mb)((_, _))
+
+  def cofactor[A,B](e: Either[M[A], M[B]]): M[Either[A, B]] = e match {
+    case Left(ma) => map(ma)(Left(_))
+    case Right(mb) => map(mb)(Right(_))
+  }
 
   // Implement in terms of `compose`:
   def _flatMap[A,B](ma: M[A])(f: A => M[B]): M[B] = ???
 
-  def join[A](mma: M[M[A]]): M[A] = ???
+  def join[A](mma: M[M[A]]): M[A] = flatMap(mma)(ma => ma)
 
   // Implement in terms of `join`:
   def __flatMap[A,B](ma: M[A])(f: A => M[B]): M[B] = ???
 }
 
-case class Reader[R, A](run: R => A)
 
 object Monad {
   val genMonad = new Monad[Gen] {
@@ -60,32 +72,62 @@ object Monad {
       ma flatMap f
   }
 
-  val parMonad: Monad[Par] = ???
+  val parMonad: Monad[Par] = new Monad[Par] {
+    override def flatMap[A, B](ma: Par[A])(f: (A) => Par[B]): Par[B] =
+      Par.flatMap(ma)(f)
 
-  def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = ???
+    override def unit[A](a: => A): Par[A] = Par.unit(a)
+  }
 
-  val optionMonad: Monad[Option] = ???
+//  def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = ???
 
-  val streamMonad: Monad[Stream] = ???
+  val optionMonad: Monad[Option] = new Monad[Option] {
+    override def flatMap[A, B](ma: Option[A])(f: (A) => Option[B]): Option[B] = ma.flatMap(f)
 
-  val listMonad: Monad[List] = ???
+    override def unit[A](a: => A): Option[A] = Some(a)
+  }
 
-  def stateMonad[S] = ???
+  val streamMonad: Monad[Stream] = new Monad[Stream] {
+    override def flatMap[A, B](ma: Stream[A])(f: (A) => Stream[B]): Stream[B] =
+      ma.flatMap(f)
 
-  val idMonad: Monad[Id] = ???
+    override def unit[A](a: => A): Stream[A] = Stream(a)
+  }
 
-  def readerMonad[R] = ???
+  val listMonad: Monad[List] = new Monad[List] {
+    override def flatMap[A, B](ma: List[A])(f: (A) => List[B]): List[B] =
+      ma.flatMap(f)
+
+    override def unit[A](a: => A): List[A] = List(a)
+  }
+
+  def stateMonad[S] = new Monad[({type lambda[x] = State[S,x]})#lambda] {
+    override def unit[A](a: => A): State[S, A] = State(s => (a,s))
+
+    override def flatMap[A, B](st: State[S, A])(f: (A) => State[S, B]): State[S, B] =
+    st flatMap f
+  }
+
+  val idMonad: Monad[Id] = new Monad[Id] {
+    override def flatMap[A, B](ma: Id[A])(f: (A) => Id[B]): Id[B] = ma.flatMap(f)
+
+    override def unit[A](a: => A): Id[A] = Id(a)
+  }
+
 }
 
 case class Id[A](value: A) {
-  def map[B](f: A => B): Id[B] = ???
-  def flatMap[B](f: A => Id[B]): Id[B] = ???
+  def map[B](f: A => B): Id[B] = Id(f(value))
+  def flatMap[B](f: A => Id[B]): Id[B] = f(value)
 }
+
+case class Reader[R, A](run: R => A)
 
 object Reader {
   def readerMonad[R] = new Monad[({type f[x] = Reader[R,x]})#f] {
-    def unit[A](a: => A): Reader[R,A] = ???
-    override def flatMap[A,B](st: Reader[R,A])(f: A => Reader[R,B]): Reader[R,B] = ???
+    def unit[A](a: => A): Reader[R,A] = Reader(r => a)
+    override def flatMap[A,B](st: Reader[R,A])(f: A => Reader[R,B]): Reader[R,B] =
+       Reader(r => f(st.run(r)).run(r))
   }
 }
 
