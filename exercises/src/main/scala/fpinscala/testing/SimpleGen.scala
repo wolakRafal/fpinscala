@@ -28,7 +28,7 @@ object SimpleGen {
 
   object Gen {
 
-    def unit[A](a: => A): Gen[A] = Gen()
+    def unit[A](a: => A): Gen[A] = ???
 
   }
 
@@ -36,7 +36,7 @@ object SimpleGen {
 
 
 
-  def choose(start: Int, stopExclusive: Int): Gen[Int] =
+  def choose(start: Int, stopExclusive: Int): Gen[Int] = ???
 
 }
 
